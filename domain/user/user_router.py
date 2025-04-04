@@ -27,12 +27,12 @@ router = APIRouter(
 def user_create(_user_create: user_schema.UserCreate, db: Session = Depends(get_db)):
     user1 = user_crud.get_existing_user_name(db, user_create = _user_create)
     user2 = user_crud.get_existing_user_email(db, user_create = _user_create)
-    if user1:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            detail="이미 사용중인 아이디입니다.")
     if user2:
         raise HTTPException(status_code=status.HTTP_423_LOCKED,
                             detail="이미 사용중인 이메일입니다.")
+    if user1:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="이미 사용중인 아이디입니다.")
     user_crud.create_user(db=db, user_create=_user_create)
 
 @router.post("/login", response_model=user_schema.Token)
