@@ -163,7 +163,7 @@ def save(request: chat_schema.ChatSave,
     today_str = datetime.now().strftime("%Y-%m-%d")
     date_obj = datetime.strptime(today_str, "%Y-%m-%d")
     filename = f"{current_user.username}_{today_str}.png"
-    image_path = generate_image([prompt], output_path="C:/projects/haru/image/"+filename)
+    image_path = generate_image([prompt], output_path="../../../image/"+filename)
 
 
     saved_diary = chat_crud.create_diary(

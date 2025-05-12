@@ -9,7 +9,7 @@ import os
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 MODEL = "runwayml/stable-diffusion-v1-5"
-WEIGHT_PATH = "C:/projects/haru/domain/AImodels/StableDiffusion_42_ghibli.pth"
+WEIGHT_PATH = "./StableDiffusion_42_ghibli.pth"
 
 # 모델 로드 (초기화는 한 번만 하게 캐싱)
 tokenizer = CLIPTokenizer.from_pretrained(MODEL, subfolder="tokenizer")

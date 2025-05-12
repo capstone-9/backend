@@ -47,7 +47,7 @@ class EmotionModel(nn.Module):
 tokenizer = AutoTokenizer.from_pretrained(BERT)
 model = EmotionModel(HIDDEN_SIZE, OUTPUT_SIZE)
 model.load_state_dict(torch.load(
-    "C:/projects/haru/domain/AImodels/xlm-roberta-large_42_fold1.pth",
+    "./xlm-roberta-large_42_fold1.pth",
     map_location=torch.device('cpu')
 ))
 model.eval()
