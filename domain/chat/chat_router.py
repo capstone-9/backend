@@ -30,6 +30,7 @@ router = APIRouter(
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def clean_json_block(text):
     # 앞뒤로 ```json 이나 ``` 같은 코드 블럭 태그 있으면 삭제
@@ -163,7 +164,7 @@ def save(request: chat_schema.ChatSave,
     today_str = datetime.now().strftime("%Y-%m-%d")
     date_obj = datetime.strptime(today_str, "%Y-%m-%d")
     filename = f"{current_user.username}_{today_str}.png"
-    image_path = generate_image([prompt], output_path="../../../image/"+filename)
+    image_path = generate_image([prompt], output_path=BASE_DIR+"/image/"+filename)
 
 
     saved_diary = chat_crud.create_diary(

@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 from transformers import AutoTokenizer, AutoModel, AutoConfig
+import os
 
 # 설정
 BERT = "xlm-roberta-large"
@@ -10,6 +11,8 @@ HIDDEN_SIZE = 256
 OUTPUT_SIZE = 6
 MAX_LEN = 400
 LABELS = ["분노", "기쁨", "불안", "당황", "슬픔", "상처"]
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 데이터셋 클래스
 class TestDataset(Dataset):
@@ -47,7 +50,7 @@ class EmotionModel(nn.Module):
 tokenizer = AutoTokenizer.from_pretrained(BERT)
 model = EmotionModel(HIDDEN_SIZE, OUTPUT_SIZE)
 model.load_state_dict(torch.load(
-    "./xlm-roberta-large_42_fold1.pth",
+    BASE_DIR+"/xlm-roberta-large_42_fold1.pth",
     map_location=torch.device('cpu')
 ))
 model.eval()
