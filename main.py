@@ -7,7 +7,7 @@ from domain.chat import chat_router
 app = FastAPI()
 
 origins = [
-    'https://haru-talktalk.vercel.app/',
+    'https://haru-talktalk.vercel.app',
     'http://localhost:3000'
 ]
 
