@@ -13,7 +13,7 @@ class ChatSave(BaseModel):
 class ChatSaveResponse(BaseModel):
     date : datetime
     summary : str
-    emotion : str
+    emotion : list[float]
     imageurl : str
 
 class ChatImage(BaseModel):
@@ -22,6 +22,6 @@ class ChatImage(BaseModel):
 class DiaryResponse(BaseModel):
     id: int
     summary: str
-    emotion: str
+    emotion: list[float]
     image_url: str
     date: datetime

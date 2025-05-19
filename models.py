@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from datetime import datetime
@@ -22,7 +22,7 @@ class Diary(Base):
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     date = Column(DateTime, default=datetime.utcnow)
     summary = Column(Text)
-    emotion = Column(String)  # 예: "기쁨", "슬픔"
+    emotion = Column(JSON)
     image_url = Column(String)
 
     user = relationship("User", back_populates="diaries")
