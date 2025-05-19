@@ -33,37 +33,43 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def clean_json_block(text):
-    # 앞뒤로 ```json 이나 ``` 같은 코드 블럭 태그 있으면 삭제
     text = text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    if text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
+    if "```json" in text:
+        text = text.split("```json")[1]
+    elif "```" in text:
+        text = text.split("```")[1]
+    elif "\"""" in text:
+        text = text.split("\"""")[1]
+    elif "**" in text:
+        text = text.split("**")[1]
+    return text.strip().strip("`")
 
 
 
-llm =OllamaLLM(model="exaone3.5")
+llm = OllamaLLM(model="exaone3.5:7.8b")
 
 # 프롬프트: 자연스럽고 친근한 말투로 응답
 chat_prompt = PromptTemplate(
     input_variables=["input"],
     template="""
-    너는 사용자의 가장 친한 친구야. 따뜻하고 친근한 성격을 가지고 있고, 마치 실제로 만나서 이야기하는 것처럼 자연스럽게 반응해.
-    사용자의 감정(기쁨, 슬픔, 분노, 고민 등)을 읽고, 공감하거나 응원해주거나 다정하게 다독여줘.
-    그리고 짧게라도 질문을 덧붙여서 사용자가 자연스럽게 더 이야기하고 싶게 만들어줘.
+    너는 사용자의 가장 친한 친구야. 사용자는 너와 함께 대화를 나누기를 원하고 있어. 너는 따뜻하고 친근한 성격을 가지고 있고, 사용자와 실제로 만나서 이야기하는 것처럼 자연스럽게 반응해.
+    사용자는 과거에 있었던 일들을 회상하면서 너와 대화를 할거야. 사용자의 감정(기쁨, 슬픔, 분노, 고민 등)을 읽고, 공감하거나 응원해주거나 다정하게 다독여줘.
+    사용자가 자연스럽게 더 이야기하고 싶게 만들어줘.
 
-    - 너무 딱딱하거나 사무적인 말투는 절대 쓰지 마.
+    주의:
+    - 특수문자, 이모지, 이모티콘은 절대 사용하지 마.
+    - 딱딱하거나 사무적인 말투는 절대 쓰지 마. 대답은 반말로 해.
+    - 사용자와 너는 가장 친한 친구 사이야.
     - 적당히 가볍고 따뜻한 친구 말투를 써.
-    - 문장 길이는 1~3문장 정도로 자연스럽게.
-    - 필요하면 이모지도 살짝 써도 좋아.
+    - 너가 할 수 있는 말은 최대 20자야. 최대한 짧게 대답해야 해.
+    - 과거에 있었던 일을 회상하면서 대화하는 거니까 과거형으로 질문을 해.
+    - 사용자가 작성한 말들을 기억해두고 있다가 질문을 만들어야 해.
+    - 사용자가 앞에서 작성한 말들을 바탕으로로 질문을 생성하는데 비슷한 유형의 질문은 한 번만 해.
+    - 대답은 친구처럼 자연스럽게 공감하면서 최대한 짧게 대답하고, 너가 하는 질문은 최대한 짧게 한번만 해.
+    - 엔터, 줄바꿈은 쓰지 마.
 
     사용자의 말:
     {input}
-
-    이 말에 대해 친구처럼 자연스럽게 공감하고, 짧은 질문도 덧붙여서 답변해줘.
     """
 )
 chat_chain = RunnableSequence(chat_prompt | llm)
@@ -73,7 +79,9 @@ summary_prompt = PromptTemplate(
     template="""
     다음은 사용자의 대화 내용이야. 이걸 바탕으로 간단한 일기처럼 정리해줘.
 
-    - 사용자가 실제로 한 말만 바탕으로 써줘. 상상하거나 추측하지 마.
+    주의:
+    - 반드시 사용자가 실제로 한 말만 바탕으로 써줘. 상상하거나 추측하지 마.
+    - 사용자가 하지 않은 말은 요약에 사용해서는 안돼.
     - 핵심적인 활동, 장소, 기분 정도만 담백하게 정리해줘.
     - 1인칭 시점으로 써줘.
     - 너무 시적이거나 문학적인 표현은 피하고, 자연스럽고 따뜻하게 하루를 회상하는 느낌이면 좋아.
@@ -88,17 +96,20 @@ summary_chain = RunnableSequence(summary_prompt | llm)
 keyword_prompt = PromptTemplate(
     input_variables=["messages"],
     template="""
-    다음 대화에서 핵심적인 단어들만 뽑아줘. 
-    - 구체적인 장소, 날씨만 뽑아줘.
-    - 장소는 대화를 분석해보고 너가 생각하기에 가장 임팩트가 큰 장소 하나만 뽑아줘.
-    - 날씨도 대화를 분석해보고 너가 생각하기에 가장 임팩트가 큰 날씨 하나만 뽑아줘.
-    - 반드시 **단어만** 뽑고, **문장은 절대 포함하지 마**.
-    - 사용자가 실제로 언급한 단어만 뽑아줘.
+    다음 대화에서 핵심 키워드 또는 주요 활동 내용을 뽑아줘.
 
-    결과는 **반드시 JSON 배열**로 줘.
-    절대로 다른 말(예: 설명, 안내문) 붙이지 말고, JSON 배열만 출력해.
+    결과는 다음과 같은 JSON 객체 형식으로 출력해줘:
+    {{
+      "tags": ["맑음", "학교"],
+      "activities": ["수업을 하고 옴", "도서관에서 공부함", "집에서 밥 먹음"],
+      "summary": ["오늘 맑은 날씨 속에서 학교에서 수업을 듣고, 도서관에서 공부하고 집에서 밥을 먹었다."]
+    }}
 
-    예시: ["맑음", "학교"]
+    주의:
+    - 반드시 JSON 객체 하나로 출력할 것.
+    - 문장 대신 JSON 배열로 구성할 것.
+    - 설명, 안내문은 포함하지 말 것.
+    - 문장을 생성할 때, 사용자가 하지 않은 쓸데 없는 말은 추가하지 말 것.
 
     대화 내용:
     {messages}
@@ -109,18 +120,48 @@ keyword_chain = RunnableSequence(keyword_prompt | llm)
 eng_prompt = PromptTemplate(
     input_variables=["messages"],
     template="""
-    다음 한국어 단어들을 영어로 번역해줘. 
-    - 각 단어를 간단하고 자연스럽게 번역해.
-    - 문장이나 해석은 절대 포함하지 마.
-    - 반드시 단어만 번역하고, 결과는 JSON 배열로만 줘.
+    다음 한국어 단어 또는 짧은 구문들을 자연스러운 영어로 번역해줘.
+    앞서 생성한 keyword_prompt의 tags, activities, summary만 그대로 영어로 번역해줘.
 
-    예시: ["맑음", "학교"] → ["sunny", "school"]
 
-    번역할 단어:
+    결과는 다음과 같은 JSON 객체 형식으로 출력해줘:
+    {{
+      "eng_tags": ["shine", "school"],
+      "eng_activities": ["I had a class", "studying in the library", "Eating at home"],
+      "eng_summary": ["Today, I took classes at school in clear weather, studied at the library, and ate at home."]
+    }}
+
+    주의:
+    - 반드시 JSON 객체 하나로 출력할 것.
+    - 문장 대신 JSON 배열로 구성할 것.
+    - 설명, 안내문은 포함하지 말 것.
+
+    번역할 항목:
     {messages}
     """
 )
 eng_chain = RunnableSequence(eng_prompt | llm)
+
+sd_prompt = PromptTemplate(
+    input_variables=["structured_summary"],
+    template="""
+    다음은 사용자의 대화에서 추출한 핵심 정보야. 이걸 바탕으로 **Stable Diffusion**에 쓸 수 있는 영어 프롬프트를 **짧고 간결하게 한 문장**으로 만들어줘.
+
+    조건:
+    - 반드시 영어로 작성해.
+    - 한 문장은 20단어 이내로 작성해.
+    - 묘사는 간결하고 명확해야 해. 수식어를 너무 많이 붙이지 마.
+    - 감정(emotion)은 색감이나 분위기로 반영해.
+    - imagery는 시각적으로 표현해.
+    - 1인칭 말투 쓰지 마.
+    - 아래 JSON의 모든 요소(subject, location, emotion, event, imagery)는 꼭 포함해.
+    - 추가 설명이나 안내문은 쓰지 마.
+
+    JSON:
+    {structured_summary}
+    """
+)
+sd_chain = RunnableSequence(sd_prompt | llm)
 
 # POST 라우터
 @router.post("/talk", response_model=chat_schema.ChatResponse)
@@ -143,28 +184,60 @@ def save(request: chat_schema.ChatSave,
     summary = summary_chain.invoke({"messages": user_messages_only})
 
     # 키워드 생성
-    keyword = keyword_chain.invoke({"messages": full_conversation})
-    keyword = clean_json_block(keyword)
+    keyword_raw = keyword_chain.invoke({"messages": full_conversation})
+    keyword_clean = clean_json_block(keyword_raw)
     try:
-        keyword = json.loads(keyword)
+        keyword_json = json.loads(keyword_clean)
+        tags = keyword_json.get("tags", [])
+        activities = keyword_json.get("activities", [])
+        summary_sentences = keyword_json.get("summary", [])
     except json.JSONDecodeError:
-        print("⚠️ 키워드 파싱 실패! 원본 출력:", keyword)
+        print("⚠️ 키워드 파싱 실패! 원본 출력:", keyword_clean)
+        tags, activities, summary_sentences = [], [], []
 
-    # 영어 생성
-    english = eng_chain.invoke({"messages": str(keyword)})
-    english = clean_json_block(english)
+    # 영어 번역
+    translation_targets = {
+        "tags": tags,
+        "activities": activities,
+        "summary": summary_sentences
+    }
+    english_raw = eng_chain.invoke({"messages": json.dumps(translation_targets, ensure_ascii=False)})
+    english_clean = clean_json_block(english_raw)
+
     try:
-        english = json.loads(english)
+        english = json.loads(english_clean)
+        eng_tags = english.get("eng_tags", [])
+        eng_activities = english.get("eng_activities", [])
+        eng_summary_sentences = english.get("eng_summary", [])
     except json.JSONDecodeError:
-        print("⚠️ 영어 파싱 실패! 원본 출력:", english)
+        print("⚠️ 영어 파싱 실패! 원본 출력:", english_clean)
+        eng_tags, eng_activities, eng_summary_sentences = [], [], []
+
+    # Stable Diffusion용 프롬프트 생성
+    structured_summary = {
+        "subject": ["I"],
+        "location": tags,
+        "emotion": [],
+        "event": activities,
+        "imagery": []
+    }
+
+    if summary_sentences:
+        first_sentence = summary_sentences[0]
+        if "햇살" in first_sentence or "sunlight" in first_sentence:
+            structured_summary["imagery"].append("sunlight through the window")
+        if "기분" in first_sentence or "느낌" in first_sentence or "feeling" in first_sentence:
+            structured_summary["emotion"].append("calm")
+
+    sd_prompt_raw = sd_chain.invoke({"structured_summary": json.dumps(structured_summary, ensure_ascii=False)})
+    sd_prompt_clean = clean_json_block(sd_prompt_raw)
+    print("\n🎨 Stable Diffusion Prompt:", sd_prompt_clean)
 
     emotion = analyze_emotion(summary)
-
-    prompt = "The day was " + english[0] + " and I went to the " + english[1]
     today_str = datetime.now().strftime("%Y-%m-%d")
     date_obj = datetime.strptime(today_str, "%Y-%m-%d")
     filename = f"{current_user.username}_{today_str}.png"
-    image_path = generate_image([prompt], output_path=BASE_DIR+"/image/"+filename)
+    image_path = generate_image([sd_prompt_clean], output_path=BASE_DIR+"/image/"+filename)
 
 
     saved_diary = chat_crud.create_diary(
