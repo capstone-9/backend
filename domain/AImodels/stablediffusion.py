@@ -10,7 +10,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL = "stabilityai/stable-diffusion-2-1"
-WEIGHT_PATH = BASE_DIR + "/StableDiffusion_42_black_rubber_shoes_epoch30.pth"
+WEIGHT_PATH = BASE_DIR + "/StableDiffusion_42_ghibli_makoto_512_epoch100.pth"
 
 # 모델 로딩
 tokenizer = CLIPTokenizer.from_pretrained(MODEL, subfolder="tokenizer")
@@ -21,7 +21,7 @@ unet.load_state_dict(torch.load(WEIGHT_PATH, map_location=device))
 noise_scheduler = DDPMScheduler.from_pretrained(MODEL, subfolder="scheduler")
 
 def generate_image(prompts: list[str], output_path: str = "output.png") -> str:
-    height, width = 400, 400
+    height, width = 512, 512
     num_inference_steps = 25
     guidance_scale = 7.5
     seed = 42
