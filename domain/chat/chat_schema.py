@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 class ChatRequest(BaseModel):
     message: str
@@ -25,3 +26,4 @@ class DiaryResponse(BaseModel):
     emotion: list[float]
     image_url: str
     date: datetime
+    conversation: Optional[list[dict]] = []

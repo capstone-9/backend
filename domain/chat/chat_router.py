@@ -246,14 +246,16 @@ def save(request: chat_schema.ChatSave,
         summary=summary,
         emotion=emotion,
         image_url=image_path,
-        date=date_obj
+        date=date_obj,
+        conversation = request.conversation
     )
 
     return {
         "summary": summary,
         "emotion": emotion,
         "imageurl": image_path,
-        "date" : date_obj
+        "date" : date_obj,
+        "conversation" : request.conversation
     }
 
 

@@ -24,5 +24,6 @@ class Diary(Base):
     summary = Column(Text)
     emotion = Column(JSON)
     image_url = Column(String)
+    conversation = Column(JSON)
 
     user = relationship("User", back_populates="diaries")

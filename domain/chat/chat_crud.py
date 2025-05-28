@@ -10,7 +10,8 @@ def create_diary(
         summary: str,
         emotion: str,
         image_url: str,
-        date: datetime  # YYYY-MM-DD 형식 문자열
+        date: datetime,  # YYYY-MM-DD 형식 문자열
+        conversation: str
 ):
     user = db.query(User).filter(User.username == username).first()
     if not user:
@@ -21,7 +22,8 @@ def create_diary(
         date=date,
         summary=summary,
         emotion=emotion,
-        image_url=image_url
+        image_url=image_url,
+        conversation = conversation
     )
     db.add(diary)
     db.commit()
