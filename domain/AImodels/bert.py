@@ -61,7 +61,7 @@ model = EmotionModel(HIDDEN_SIZE, OUTPUT_SIZE)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
 model.eval()
 
-# ✅ 감정 분석 함수 (확률 리스트 반환)
+# 감정 분석 함수 (확률 리스트 반환)
 def analyze_emotion(text: str) -> list:
     dataset = TestDataset([text], tokenizer)
     dataloader = DataLoader(dataset, batch_size=1)
