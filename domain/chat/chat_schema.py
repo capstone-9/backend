@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    conversation: list[dict]
 
 class ChatSave(BaseModel):
     conversation : list[dict]
