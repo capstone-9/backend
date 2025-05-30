@@ -78,14 +78,18 @@ chat_chain = RunnableSequence(chat_prompt | llm)
 summary_prompt = PromptTemplate(
     input_variables=["messages"],
     template="""
-    다음은 사용자의 대화 내용이야. 이걸 바탕으로 간단한 일기처럼 정리해줘.
+    다음은 사용자의 메시지들만 모은 내용이야. 이걸 바탕으로 간단한 일기처럼 정리해줘.
 
     주의:
-    - 반드시 사용자가 실제로 한 말만 바탕으로 써줘. 상상하거나 추측하지 마.
+    - 반드시 사용자가 실제로 한 말만 바탕으로 써.
+    - 시스템이나 AI가 한 말, 질문, 제안은 절대 포함하지 말 것
     - 사용자가 하지 않은 말은 요약에 사용해서는 안돼.
+    - 사용자가 직접 말하지 않은 감정, 사건, 기억은 절대 추가하지 마.
+    - 예측하거나 유추하지 말고, 직접 언급된 사실만 사용해.
     - 핵심적인 활동, 장소, 기분 정도만 담백하게 정리해줘.
     - 1인칭 시점으로 써줘.
     - 너무 시적이거나 문학적인 표현은 피하고, 자연스럽고 따뜻하게 하루를 회상하는 느낌이면 좋아.
+    - 반드시 사용자의 실제 발화 내용만 기반으로 작성할 것.
     - "오늘은"으로 시작해줘.
 
     사용자 메시지:
@@ -97,19 +101,22 @@ summary_chain = RunnableSequence(summary_prompt | llm)
 keyword_prompt = PromptTemplate(
     input_variables=["messages"],
     template="""
-    다음 대화에서 핵심 키워드 또는 주요 활동 내용을 뽑아줘.
+    다음은 사용자 발화만 포함된 대화야. 여기서 핵심 키워드와 활동을 뽑아줘.
 
     결과는 다음과 같은 JSON 객체 형식으로 출력해줘:
     {{
-      "tags": ["맑음", "학교"],
-      "activities": ["수업을 하고 옴", "도서관에서 공부함", "집에서 밥 먹음"],
-      "summary": ["오늘 맑은 날씨 속에서 학교에서 수업을 듣고, 도서관에서 공부하고 집에서 밥을 먹었다."]
+      "tags": ["눈", "집"],
+      "activities": ["햄버거를 먹음", "혼자 집에 감"],
+      "summary": ["오늘 눈 오는데, 햄버거를 먹고 혼자 조용히 집으로 돌아왔다."]
     }}
 
     주의:
     - 반드시 JSON 객체 하나로 출력할 것.
     - 문장 대신 JSON 배열로 구성할 것.
     - 설명, 안내문은 포함하지 말 것.
+    - 반드시 사용자의 발화 내용만 바탕으로 작성할 것
+    - AI의 질문, 감정, 반응, 제안은 절대 포함하지 말 것
+    - 추론하거나 상상하지 말고, 사용자가 직접 언급한 요소만 사용해
     - 문장을 생성할 때, 사용자가 하지 않은 쓸데 없는 말은 추가하지 말 것.
 
     대화 내용:
@@ -124,12 +131,11 @@ eng_prompt = PromptTemplate(
     다음 한국어 단어 또는 짧은 구문들을 자연스러운 영어로 번역해줘.
     앞서 생성한 keyword_prompt의 tags, activities, summary만 그대로 영어로 번역해줘.
 
-
     결과는 다음과 같은 JSON 객체 형식으로 출력해줘:
     {{
-      "eng_tags": ["shine", "school"],
-      "eng_activities": ["I had a class", "studying in the library", "Eating at home"],
-      "eng_summary": ["Today, I took classes at school in clear weather, studied at the library, and ate at home."]
+      "eng_tags": ["strong wind", "argument", "emotional distance"],
+      "eng_activities": ["argued with friend", "walked home alone"],
+      "eng_summary": ["Today, I argued with a friend under strong winds and returned home alone in silence."]
     }}
 
     주의:
@@ -179,6 +185,10 @@ def save(request: chat_schema.ChatSave,
          db: Session = Depends(get_db),
          current_user=Depends(get_current_user)
          ):
+    eng_tags = []
+    eng_activities = []
+    eng_summary_sentences = []
+
     full_conversation = "\n".join([f"{m['speaker']}: {m['message']}" for m in request.conversation])
 
     # 요약 생성
@@ -208,38 +218,34 @@ def save(request: chat_schema.ChatSave,
 
     try:
         english = json.loads(english_clean)
-        eng_tags = english.get("eng_tags", [])
-        eng_activities = english.get("eng_activities", [])
-        eng_summary_sentences = english.get("eng_summary", [])
+        eng_tags = english.get("eng_tags", eng_tags)
+        eng_activities = english.get("eng_activities", eng_activities)
+        eng_summary_sentences = english.get("eng_summary", eng_summary_sentences)
     except json.JSONDecodeError:
         print("⚠️ 영어 파싱 실패! 원본 출력:", english_clean)
-        eng_tags, eng_activities, eng_summary_sentences = [], [], []
 
-    # Stable Diffusion용 프롬프트 생성
-    structured_summary = {
-        "subject": ["I"],
-        "location": tags,
-        "emotion": [],
-        "event": activities,
-        "imagery": []
+    translation_targets = {
+        "tags": tags,
+        "activities": activities,
+        "summary": summary_sentences
     }
+    english_raw = eng_chain.invoke({"messages": json.dumps(translation_targets, ensure_ascii=False)})
+    english_clean = clean_json_block(english_raw)
 
-    if summary_sentences:
-        first_sentence = summary_sentences[0]
-        if "햇살" in first_sentence or "sunlight" in first_sentence:
-            structured_summary["imagery"].append("sunlight through the window")
-        if "기분" in first_sentence or "느낌" in first_sentence or "feeling" in first_sentence:
-            structured_summary["emotion"].append("calm")
+    try:
+        english = json.loads(english_clean)
+        eng_tags = english.get("eng_tags", eng_tags)
+        eng_activities = english.get("eng_activities", eng_activities)
+        eng_summary_sentences = english.get("eng_summary", eng_summary_sentences)
+    except json.JSONDecodeError:
+        print("⚠️ 영어 파싱 실패! 원본 출력:", english_clean)
 
-    sd_prompt_raw = sd_chain.invoke({"structured_summary": json.dumps(structured_summary, ensure_ascii=False)})
-    sd_prompt_clean = clean_json_block(sd_prompt_raw)
-    print("\n🎨 Stable Diffusion Prompt:", sd_prompt_clean)
 
     emotion = analyze_emotion(summary)
     today_str = datetime.now().strftime("%Y-%m-%d")
     date_obj = datetime.strptime(today_str, "%Y-%m-%d")
     filename = f"{current_user.username}_{today_str}.png"
-    image_path = generate_image([sd_prompt_clean], output_path=BASE_DIR+"/image/"+filename)
+    image_path = generate_image([eng_summary_sentences], output_path=BASE_DIR+"/image/"+filename)
 
 
     saved_diary = chat_crud.create_diary(
